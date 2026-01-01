@@ -103,7 +103,7 @@ async def daily(interaction: discord.Interaction):
 @bot.tree.command(name="dat", description="Bầu cua")
 @app_commands.describe(
     con="bầu,cua,tôm,cá,nai,gà (có thể nhiều con, cách nhau bằng ,)",
-    tien="Số tiền mỗi con hoặc all",
+    tien="Số tiền hoặc all",
     dudoan="x1, x2, x3"
 )
 @cooldown(1, 10, BucketType.user)
