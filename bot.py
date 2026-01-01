@@ -156,13 +156,27 @@ async def dat(
 
     for c in cons:
         so_trung = ket_qua.count(c)
-        loi = (so_trung - (3 - so_trung)) * bet * he_so
-        tong_loi += loi
 
-        chi_tiet.append(
-            f"{EMOJI[c]} `{c}`: trúng {so_trung} → "
-            f"{'+' if loi >= 0 else ''}{loi} 💵"
-        )
+    # 🔹 LUẬT RIÊNG CHO x1
+    if he_so == 1:
+        if so_trung > 0:
+            loi = so_trung * bet
+        else:
+            loi = -bet
+
+    # 🔹 LUẬT GIỮ NGUYÊN CHO x2, x3
+    else:
+        if so_trung > 0:
+            loi = so_trung * bet * he_so
+        else:
+            loi = -3 * bet * he_so
+
+    tong_loi += loi
+
+    chi_tiet.append(
+        f"{EMOJI[c]} `{c}`: trúng {so_trung} → "
+        f"{'+' if loi > 0 else ''}{loi} 💵"
+    )
 
     user["money"] += tong_loi
     if user["money"] < 0:
