@@ -3,6 +3,8 @@ from discord.ext import commands
 from discord import app_commands
 from discord.ext.commands import cooldown, BucketType
 import random, json, os, time
+from discord import app_commands, Embed
+
 
 # ====== CONFIG ======
 TOKEN = os.getenv("TOKEN")
@@ -201,6 +203,46 @@ async def rank(interaction: discord.Interaction):
             inline=False
         )
 
+    await interaction.response.send_message(embed=embed)
+
+
+@bot.tree.command(name="help", description="Xem danh sách lệnh")
+async def help(interaction: discord.Interaction):
+    embed = discord.Embed(
+        title="📖 HƯỚNG DẪN BOT BẦU CUA",
+        description="Danh sách lệnh có sẵn",
+        color=0x9b59b6
+    )
+
+    embed.add_field(
+        name="💰 Kinh tế",
+        value=(
+            "`/money` – Xem số dư\n"
+            "`/daily` – Nhận tiền mỗi ngày\n"
+            "`/rank` – Bảng xếp hạng"
+        ),
+        inline=False
+    )
+
+    embed.add_field(
+        name="🎲 Bầu Cua",
+        value=(
+            "`/dat <con> <tiền> <chế độ>`\n"
+            "• Con: bầu, cua, tôm, cá, nai, gà\n"
+            "• Tiền: số hoặc `all`\n"
+            "• Chế độ: x1, x2, x3, all\n\n"
+            "Ví dụ: `/dat cua 500 x2`"
+        ),
+        inline=False
+    )
+
+    embed.add_field(
+        name="🧾 Khác",
+        value="`/history` – Xem lịch sử cược",
+        inline=False
+    )
+
+    embed.set_footer(text="Chúc bạn chơi vui vẻ 🎉")
     await interaction.response.send_message(embed=embed)
 
 # ====== RUN ======
