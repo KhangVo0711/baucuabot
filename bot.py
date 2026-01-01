@@ -179,7 +179,7 @@ async def dat(
     user["history"].append({
         "bet": ",".join(cons),
         "money": bet,
-        "mode": chedo,
+        "mode": dudoan,
         "change": tong_loi
     })
     user["history"] = user["history"][-10:]
