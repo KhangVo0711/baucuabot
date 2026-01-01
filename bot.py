@@ -104,14 +104,14 @@ async def daily(interaction: discord.Interaction):
 @app_commands.describe(
     con="bầu, cua, tôm, cá, nai, gà (có thể đặt 2 con, cách nhau bằng dấu ,)",
     tien="Số tiền hoặc all",
-    chedo="x1, x2, x3"
+    dudoan="x2, x3"
 )
 @cooldown(1, 10, BucketType.user)
 async def dat(
     interaction: discord.Interaction,
     con: str,
     tien: str,
-    chedo: str = "x1"
+    dudoan: str = "x1"
 ):
     data = load_data()
     user = get_user(data, str(interaction.user.id))
@@ -142,7 +142,7 @@ async def dat(
         return
 
     # ====== HỆ SỐ ======
-    he_so = {"x1": 1, "x2": 2, "x3": 3}.get(chedo.lower(), 1)
+    he_so = {"x2": 2, "x3": 3}.get(dudoan.lower(), 1)
 
     # ====== QUAY BẦU CUA ======
     ket_qua = random.choices(BAU_CUA, k=3)
@@ -249,7 +249,7 @@ async def help(interaction: discord.Interaction):
             "`/dat <con> <tiền> <chế độ>`\n"
             "• Con: bầu, cua, tôm, cá, nai, gà\n"
             "• Tiền: số hoặc `all`\n"
-            "• Chế độ: x1, x2, x3, all\n\n"
+            "• Dự đoán: x2, x3, all\n\n"
             "Ví dụ: `/dat cua 500 x2`\n"
             "hoặc `/dat bầu, cá all x3`"
         ),
