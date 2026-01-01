@@ -49,9 +49,9 @@ def get_user(data, uid):
 def get_rank(money):
     if money >= 100000:
         return "🔵 Kim Cương"
-    elif money >= 20000:
+    elif money >= 30000:
         return "🟡 Vàng"
-    elif money >= 5000:
+    elif money >= 8000:
         return "⚪ Bạc"
     return "🟤 Đồng"
 
@@ -100,11 +100,11 @@ async def daily(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed)
 
 # ====== DAT ======
-@bot.tree.command(name="dat", description="Đặt cược bầu cua")
+@bot.tree.command(name="dat", description="Đặt cược bầu cua (nhiều con)")
 @app_commands.describe(
-    con="bầu, cua, tôm, cá, nai, gà",
+    con="bầu,cua,tôm,cá,nai,gà (có thể nhiều con, cách nhau bằng ,)",
     tien="Số tiền hoặc all",
-    chedo="x1, x2, x3, all"
+    chedo="x1, x2, x3"
 )
 @cooldown(1, 10, BucketType.user)
 async def dat(
@@ -113,11 +113,11 @@ async def dat(
     tien: str,
     chedo: str = "x1"
 ):
-    con = con.lower()
+    cons = [c.strip().lower() for c in con.split(",")]
     chedo = chedo.lower()
 
-    if con not in BAU_CUA:
-        await interaction.response.send_message("Con không hợp lệ")
+    if not all(c in BAU_CUA for c in cons):
+        await interaction.response.send_message("Có con không hợp lệ")
         return
 
     data = load_data()
@@ -131,40 +131,51 @@ async def dat(
             return
         tien = int(tien)
 
-    if tien <= 0 or user["money"] < tien:
+    he_so = {"x1": 1, "x2": 2, "x3": 3}.get(chedo, 1)
+
+    # 🛡 kiểm tra đủ tiền
+    if tien <= 0 or user["money"] < tien * he_so:
         await interaction.response.send_message("Không đủ tiền")
         return
 
-    he_so = {"x1": 1, "x2": 2, "x3": 3, "all": 1}.get(chedo, 1)
-
+    # 🎲 lắc
     ket_qua = random.choices(BAU_CUA, k=3)
-    trung = ket_qua.count(con)
 
-    embed = discord.Embed(title="🎲 BẦU CUA", color=0xe67e22)
-    embed.add_field(
-        name="Kết quả",
-        value=" | ".join([EMOJI[x] for x in ket_qua]),
-        inline=False
-    )
+    trung = sum(ket_qua.count(c) for c in cons)
 
-    if trung > 0:
-        win_money = tien * trung * he_so
-        user["money"] += win_money
+    # 💰 tính tiền
+    loi = (trung - 3) * tien * he_so
+    user["money"] += loi
+
+    # 🛡 chống âm
+    if user["money"] < 0:
+        user["money"] = 0
+
+    if loi >= 0:
         user["win"] += 1
-        result = f"🎉 Trúng {trung} → +{win_money} 💵"
+        result = f"🎉 Trúng {trung} → +{loi} 💵"
     else:
-        user["money"] -= tien
         user["lose"] += 1
-        result = f"💀 Thua -{tien} 💵"
+        result = f"💀 Trúng {trung} → {loi} 💵"
 
     user["history"].append({
-        "bet": con,
+        "bet": ",".join(cons),
         "money": tien,
+        "mode": chedo,
         "result": result
     })
     user["history"] = user["history"][-10:]
 
-    embed.add_field(name="Kết quả cược", value=result, inline=False)
+    embed = discord.Embed(title="🎲 BẦU CUA", color=0xe67e22)
+    embed.add_field(
+        name="Kết quả",
+        value=" | ".join(EMOJI[x] for x in ket_qua),
+        inline=False
+    )
+    embed.add_field(name="Con cược", value=", ".join(cons))
+    embed.add_field(name="Tiền cược", value=f"{tien} 💵")
+    embed.add_field(name="Hệ số", value=chedo.upper())
+    embed.add_field(name="Kết quả", value=result, inline=False)
     embed.add_field(name="Số dư", value=f"{user['money']} 💵")
     embed.add_field(name="Rank", value=get_rank(user["money"]))
 
