@@ -100,11 +100,11 @@ async def daily(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed)
 
 # ====== DAT ======
-@bot.tree.command(name="dat", description="Đặt cược bầu cua (tối đa 2 con)")
+@bot.tree.command(name="dat", description="Bầu cua")
 @app_commands.describe(
-    con="bầu, cua, tôm, cá, nai, gà (có thể đặt 2 con, cách nhau bằng dấu ,)",
-    tien="Số tiền hoặc all",
-    dudoan="x2, x3"
+    con="bầu,cua,tôm,cá,nai,gà (có thể nhiều con, cách nhau bằng ,)",
+    tien="Số tiền mỗi con hoặc all",
+    dudoan="x1, x2, x3"
 )
 @cooldown(1, 10, BucketType.user)
 async def dat(
@@ -113,99 +113,96 @@ async def dat(
     tien: str,
     dudoan: str = "x1"
 ):
+    # ===== PARSE =====
+    cons = [c.strip().lower() for c in con.split(",") if c.strip()]
+    if not cons or not all(c in BAU_CUA for c in cons):
+        await interaction.response.send_message("Con cược không hợp lệ")
+        return
+
+    he_so = {"x1": 1, "x2": 2, "x3": 3}.get(dudoan.lower())
+    if not he_so:
+        await interaction.response.send_message("Chế độ không hợp lệ")
+        return
+
     data = load_data()
     user = get_user(data, str(interaction.user.id))
 
-    # ====== XỬ LÝ CON CƯỢC ======
-    cons = [c.strip().lower() for c in con.split(",")]
-
-    if len(cons) > 2:
-        await interaction.response.send_message("Chỉ được đặt tối đa **2 con**")
-        return
-
-    for c in cons:
-        if c not in BAU_CUA:
-            await interaction.response.send_message(f"Con không hợp lệ: `{c}`")
-            return
-
-    # ====== XỬ LÝ TIỀN ======
+    # ===== TIỀN CƯỢC =====
     if tien == "all":
-        tien = user["money"]
+        bet = user["money"] // (len(cons) * he_so)
     else:
         if not tien.isdigit():
             await interaction.response.send_message("Tiền không hợp lệ")
             return
-        tien = int(tien)
+        bet = int(tien)
 
-    if tien <= 0 or user["money"] < tien:
-        await interaction.response.send_message("Không đủ tiền")
+    if bet <= 0:
+        await interaction.response.send_message("Tiền cược phải > 0")
         return
 
-    # ====== HỆ SỐ ======
-    he_so = {"x2": 2, "x3": 3}.get(dudoan.lower(), 1)
+    max_need = bet * len(cons) * he_so * 3
+    if user["money"] < max_need:
+        await interaction.response.send_message(
+            f"Không đủ tiền (cần tối đa {max_need} 💵)"
+        )
+        return
 
-    # ====== QUAY BẦU CUA ======
+    # ===== LẮC =====
     ket_qua = random.choices(BAU_CUA, k=3)
-    trung = sum(ket_qua.count(c) for c in cons)
 
-    # ====== TRỪ TIỀN CƯỢC TRƯỚC ======
-    user["money"] -= tien
+    # ===== TÍNH TIỀN =====
+    tong_loi = 0
+    chi_tiet = []
 
-    # ====== TÍNH THẮNG / THUA ======
-    if trung > 0:
-        win_money = tien * trung * he_so
-        user["money"] += win_money
+    for c in cons:
+        so_trung = ket_qua.count(c)
+        loi = (so_trung - (3 - so_trung)) * bet * he_so
+        tong_loi += loi
+
+        chi_tiet.append(
+            f"{EMOJI[c]} `{c}`: trúng {so_trung} → "
+            f"{'+' if loi >= 0 else ''}{loi} 💵"
+        )
+
+    user["money"] += tong_loi
+    if user["money"] < 0:
+        user["money"] = 0
+
+    if tong_loi >= 0:
         user["win"] += 1
-        result = f"🎉 Trúng {trung} → +{win_money} 💵"
+        ketqua_text = f"🎉 Thắng {tong_loi} 💵"
     else:
         user["lose"] += 1
-        result = f"💀 Thua -{tien} 💵"
+        ketqua_text = f"💀 Thua {tong_loi} 💵"
 
-    # ====== LƯU LỊCH SỬ ======
+    # ===== HISTORY =====
     user["history"].append({
-        "bet": ", ".join(cons),
-        "money": tien,
-        "result": result
+        "bet": ",".join(cons),
+        "money": bet,
+        "mode": chedo,
+        "change": tong_loi
     })
     user["history"] = user["history"][-10:]
 
     save_data(data)
 
-    # ====== EMBED ======
+    # ===== EMBED =====
     embed = discord.Embed(title="🎲 BẦU CUA", color=0xe67e22)
     embed.add_field(
-        name="🎯 Con cược",
-        value=", ".join([f"{EMOJI[c]} {c}" for c in cons]),
+        name="Kết quả",
+        value=" | ".join(EMOJI[x] for x in ket_qua),
         inline=False
     )
-    embed.add_field(
-        name="🎲 Kết quả",
-        value=" | ".join([EMOJI[x] for x in ket_qua]),
-        inline=False
-    )
-    embed.add_field(name="📊 Kết quả cược", value=result, inline=False)
-    embed.add_field(name="💰 Số dư", value=f"{user['money']} 💵")
-    embed.add_field(name="🏅 Rank", value=get_rank(user['money']))
+    embed.add_field(name="Con cược", value=", ".join(cons))
+    embed.add_field(name="Tiền / con", value=f"{bet} 💵")
+    embed.add_field(name="Hệ số", value=f"x{he_so}")
+    embed.add_field(name="Chi tiết", value="\n".join(chi_tiet), inline=False)
+    embed.add_field(name="Tổng", value=ketqua_text, inline=False)
+    embed.add_field(name="Số dư", value=f"{user['money']} 💵")
+    embed.add_field(name="Rank", value=get_rank(user['money']))
 
     await interaction.response.send_message(embed=embed)
 
-
-# ====== HISTORY ======
-@bot.tree.command(name="history", description="Xem lịch sử cược")
-async def history(interaction: discord.Interaction):
-    data = load_data()
-    user = get_user(data, str(interaction.user.id))
-
-    if not user["history"]:
-        await interaction.response.send_message("📭 Chưa có lịch sử")
-        return
-
-    text = ""
-    for i, h in enumerate(user["history"], 1):
-        text += f"{i}. {h['bet']} | {h['result']}\n"
-
-    embed = discord.Embed(title="🧾 Lịch sử cược", description=text, color=0x3498db)
-    await interaction.response.send_message(embed=embed)
 
 # ====== RANK ======
 @bot.tree.command(name="rank", description="Bảng xếp hạng")
