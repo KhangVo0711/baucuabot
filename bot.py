@@ -217,6 +217,33 @@ async def dat(
 
     await interaction.response.send_message(embed=embed)
 
+@bot.tree.command(name="history", description="Xem lịch sử bầu cua gần đây")
+async def history(interaction: discord.Interaction):
+    data = load_data()
+    user = get_user(data, str(interaction.user.id))
+
+    if not user["history"]:
+        await interaction.response.send_message("📭 Bạn chưa có lịch sử cược nào")
+        return
+
+    text = ""
+    for i, h in enumerate(reversed(user["history"]), 1):
+        change = h["change"]
+        sign = "+" if change > 0 else ""
+        text += (
+            f"**#{i}** 🎲 `{h['bet']}` | {h['mode']}\n"
+            f"💰 Tiền/con: {h['money']} 💵\n"
+            f"📊 Kết quả: {sign}{change} 💵\n\n"
+        )
+
+    embed = discord.Embed(
+        title="🧾 LỊCH SỬ BẦU CUA (GẦN NHẤT)",
+        description=text,
+        color=0x3498db
+    )
+    embed.set_footer(text="Chỉ hiển thị 10 ván gần nhất")
+
+    await interaction.response.send_message(embed=embed)
 
 # ====== RANK ======
 @bot.tree.command(name="rank", description="Bảng xếp hạng")
